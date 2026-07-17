@@ -45,6 +45,10 @@ npm run dev:api
 npm run dev:mobile
 ```
 
+> Run `dev:api` / `dev:mobile` from the **repo root** — they are workspace
+> dispatchers defined in the root `package.json`. If you're already inside
+> `apps/api` or `apps/mobile`, run `npm run dev` there instead.
+
 Open the app in Expo Go / a simulator. It signs in automatically with
 dev-mode auth using your device timezone. On a physical device, set
 `EXPO_PUBLIC_API_URL` to your machine's LAN IP (see `.env.example`).
