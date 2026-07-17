@@ -1,0 +1,82 @@
+questions:
+  - id: cache-aside-basics
+    topic: caching
+    difficulty: 1
+    prompt: >-
+      In the cache-aside (lazy loading) pattern, what does the application do
+      on a cache miss?
+    choices:
+      - Return an error to the client and retry later
+      - Read from the database, write the value into the cache, then return it
+      - Wait for the cache to sync itself from the database
+      - Invalidate the whole cache and rebuild it
+    answerIndex: 1
+    explanation: >-
+      With cache-aside, the application owns the cache: on a miss it loads the
+      value from the source of truth (the database), populates the cache so the
+      next read is fast, and returns the value. The cache never talks to the
+      database on its own.
+
+  - id: load-balancer-purpose
+    topic: load-balancing
+    difficulty: 1
+    prompt: What is the primary job of a load balancer in a web architecture?
+    choices:
+      - Encrypt all traffic between services
+      - Store session data for the application servers
+      - Distribute incoming requests across multiple servers
+      - Cache database queries to reduce read load
+    answerIndex: 2
+    explanation: >-
+      A load balancer spreads incoming traffic across a pool of servers so no
+      single machine is overwhelmed, and routes around unhealthy instances.
+      TLS termination or sticky sessions are extras, not its core purpose.
+
+  - id: vertical-vs-horizontal
+    topic: scaling
+    difficulty: 1
+    prompt: >-
+      Your API server is CPU-bound at peak traffic. Which option describes
+      horizontal scaling?
+    choices:
+      - Upgrading the server to one with more CPU cores
+      - Adding more server instances behind a load balancer
+      - Moving the database to a faster disk
+      - Rewriting the service in a faster language
+    answerIndex: 1
+    explanation: >-
+      Horizontal scaling adds more machines; vertical scaling makes one machine
+      bigger. Horizontal scaling has no hard ceiling and improves fault
+      tolerance, but requires the service to run correctly as multiple copies —
+      which usually means keeping it stateless.
+
+  - id: sql-index-tradeoff
+    topic: databases
+    difficulty: 1
+    prompt: Adding an index to a database table speeds up reads. What is the main cost?
+    choices:
+      - Reads become non-deterministic
+      - Writes get slower and storage grows
+      - The table must be locked for all queries
+      - Transactions can no longer be used on the table
+    answerIndex: 1
+    explanation: >-
+      Every insert, update, or delete must also update each index, and indexes
+      consume disk and memory. Indexing is a classic read-vs-write trade-off:
+      index the queries you actually run, not every column.
+
+  - id: cdn-static-assets
+    topic: cdn
+    difficulty: 1
+    prompt: Why does serving images and JS bundles from a CDN reduce page load time?
+    choices:
+      - CDNs compress assets better than origin servers can
+      - CDN edge servers are geographically closer to users, cutting latency
+      - CDNs bypass DNS resolution entirely
+      - Browsers give CDN domains higher priority
+    answerIndex: 1
+    explanation: >-
+      A CDN caches content at edge locations around the world, so a user in
+      Lagos fetches assets from a nearby edge node instead of a distant origin.
+      Less distance means fewer round-trip milliseconds, and the origin is
+      shielded from most traffic.
