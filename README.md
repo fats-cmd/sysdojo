@@ -49,6 +49,23 @@ Open the app in Expo Go / a simulator. It signs in automatically with
 dev-mode auth using your device timezone. On a physical device, set
 `EXPO_PUBLIC_API_URL` to your machine's LAN IP (see `.env.example`).
 
+### "This project requires a newer version of Expo Go"
+
+This project targets **Expo SDK 54**, and each Expo Go build only supports a
+single SDK version. Once the Play Store / App Store version of Expo Go moves
+past SDK 54, it will refuse to open this project (the error message's
+direction is misleading — the store client is too *new* for the project).
+
+**Fix (no code changes):** install the Expo Go build that matches SDK 54 from
+[expo.dev/go](https://expo.dev/go) — pick *SDK 54*, download the Android APK
+(or use the iOS instructions), and open the project with that build. The
+sideloaded APK is not auto-updated by the Play Store. Emulators are not
+affected: `npx expo start` + `a` installs the matching Expo Go automatically.
+
+Do **not** downgrade the project below SDK 54 — no current Expo Go build
+supports older SDKs. The long-term path is upgrading to the latest SDK as its
+own reviewed phase.
+
 ## Scripts
 
 | Command             | What it does                                  |
