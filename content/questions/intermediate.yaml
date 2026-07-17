@@ -1,0 +1,89 @@
+questions:
+  - id: message-queue-decoupling
+    topic: messaging
+    difficulty: 2
+    prompt: >-
+      An e-commerce checkout calls the email service synchronously and fails
+      whenever the email service is down. What is the standard fix?
+    choices:
+      - Retry the email call in a loop until it succeeds
+      - Publish an "order placed" event to a message queue and let the email service consume it
+      - Move the email service onto the same host as checkout
+      - Cache outgoing emails in Redis and flush hourly
+    answerIndex: 1
+    explanation: >-
+      A queue decouples the producer from the consumer: checkout publishes the
+      event and completes, and the email service processes it whenever it is
+      healthy. Outages become delays instead of failures, and bursts are
+      absorbed by the queue.
+
+  - id: read-replica-lag
+    topic: databases
+    difficulty: 2
+    prompt: >-
+      You add read replicas to scale reads. A user updates their profile, is
+      redirected, and sees stale data. What is the cause?
+    choices:
+      - The write failed silently on the primary
+      - Replication lag — the read hit a replica that hadn't applied the write yet
+      - The load balancer cached the previous response
+      - Read replicas only sync once per minute by design
+    answerIndex: 1
+    explanation: >-
+      Asynchronous replication means replicas trail the primary by some lag.
+      Read-your-own-writes fixes include pinning a user's reads to the primary
+      briefly after a write, or session tokens that encode the minimum
+      replication position a replica must have.
+
+  - id: rate-limit-algorithm
+    topic: rate-limiting
+    difficulty: 2
+    prompt: >-
+      Which rate-limiting algorithm allows short bursts while enforcing an
+      average rate over time?
+    choices:
+      - Fixed window counter
+      - Token bucket
+      - Leaky bucket with constant drain and no queue
+      - Round-robin throttling
+    answerIndex: 1
+    explanation: >-
+      A token bucket refills at the average allowed rate and holds up to a
+      burst-sized number of tokens. Clients can spend saved-up tokens in a
+      burst, but sustained traffic is capped at the refill rate. Fixed windows
+      allow double-bursts at window edges.
+
+  - id: sharding-hot-key
+    topic: sharding
+    difficulty: 2
+    prompt: >-
+      A social app shards posts by user_id. One celebrity account now overloads
+      its shard. What is this problem called, and what is a common mitigation?
+    choices:
+      - Split brain; add a consensus protocol like Raft
+      - Hot partition; spread that key with a suffix (salting) or cache it aggressively
+      - Cache stampede; add request coalescing
+      - Replication lag; promote a replica
+    answerIndex: 1
+    explanation: >-
+      Skewed access makes one shard "hot" while others idle. Mitigations
+      include salting the hot key across sub-partitions, dedicated handling
+      for celebrity accounts, and heavy caching in front of the shard.
+
+  - id: idempotency-key
+    topic: api-design
+    difficulty: 2
+    prompt: >-
+      A payment API client times out and retries, double-charging a customer.
+      What mechanism prevents this?
+    choices:
+      - Exponential backoff on retries
+      - Idempotency keys — the server deduplicates requests carrying the same key
+      - Two-phase commit between client and server
+      - Shorter timeouts so retries happen faster
+    answerIndex: 1
+    explanation: >-
+      The client generates a unique idempotency key per logical operation and
+      sends it on every retry. The server stores the result under that key and
+      returns the same response for duplicates, making retries safe. Backoff
+      changes when retries happen, not their effect.

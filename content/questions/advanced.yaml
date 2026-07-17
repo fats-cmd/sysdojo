@@ -1,0 +1,90 @@
+questions:
+  - id: cap-partition-choice
+    topic: distributed-systems
+    difficulty: 3
+    prompt: >-
+      During a network partition, a CP system (per the CAP theorem) will do
+      what?
+    choices:
+      - Keep serving reads and writes on both sides, reconciling later
+      - Refuse some requests to preserve consistency
+      - Switch to eventual consistency automatically
+      - Elect a new leader on each side of the partition
+    answerIndex: 1
+    explanation: >-
+      CAP says that under a partition you must choose: a CP system sacrifices
+      availability — nodes that can't reach a quorum reject requests rather
+      than risk divergent state. An AP system keeps answering on both sides
+      and reconciles once the partition heals.
+
+  - id: cache-stampede
+    topic: caching
+    difficulty: 3
+    prompt: >-
+      A popular cache entry expires and thousands of concurrent requests hit
+      the database at once. Which pair of techniques addresses this?
+    choices:
+      - Write-through caching and larger TTLs
+      - Request coalescing (single flight) and staggered/probabilistic TTL expiry
+      - Consistent hashing and read replicas
+      - Sticky sessions and connection pooling
+    answerIndex: 1
+    explanation: >-
+      This is a cache stampede (thundering herd). Single-flight lets exactly
+      one request recompute the value while others wait, and jittered or
+      probabilistic early expiry prevents many keys (or many servers) from
+      expiring in lockstep.
+
+  - id: outbox-pattern
+    topic: messaging
+    difficulty: 3
+    prompt: >-
+      A service must update its database AND publish an event, but a crash
+      between the two leaves them inconsistent. What is the standard solution?
+    choices:
+      - Publish the event first, then write to the database
+      - Transactional outbox — write the event to an outbox table in the same DB transaction, relay it asynchronously
+      - Distributed transaction (2PC) spanning the database and the broker
+      - Have consumers poll the database instead of using events
+    answerIndex: 1
+    explanation: >-
+      The outbox pattern makes the state change and the pending event atomic —
+      they commit in one local transaction. A relay (poller or CDC) then
+      publishes from the outbox table, giving at-least-once delivery without
+      fragile cross-system 2PC.
+
+  - id: consistent-hashing-why
+    topic: sharding
+    difficulty: 3
+    prompt: >-
+      Compared with `hash(key) mod N`, what is the key benefit of consistent
+      hashing for a cache cluster?
+    choices:
+      - It distributes keys perfectly evenly across nodes
+      - Adding or removing a node remaps only ~1/N of keys instead of nearly all
+      - It removes the need for replication
+      - Lookups become O(1) instead of O(log N)
+    answerIndex: 1
+    explanation: >-
+      With mod-N, changing N remaps almost every key — a full cache wipe.
+      Consistent hashing places nodes on a ring so membership changes only move
+      the keys adjacent to the changed node; virtual nodes smooth out the
+      distribution.
+
+  - id: quorum-rw
+    topic: distributed-systems
+    difficulty: 3
+    prompt: >-
+      In a Dynamo-style system with N=3 replicas, which read/write quorum
+      configuration guarantees a read sees the latest acknowledged write?
+    choices:
+      - R=1, W=1 — fastest on both paths
+      - R=2, W=2 — because R + W > N
+      - R=1, W=2 — writes reach a majority
+      - R=3, W=1 — reads check every replica
+    answerIndex: 1
+    explanation: >-
+      Overlap requires R + W > N. With N=3, R=2 and W=2 every read quorum
+      intersects every write quorum in at least one replica holding the latest
+      write. R=3/W=1 also satisfies the inequality but makes reads fragile —
+      any one replica down blocks all reads.
