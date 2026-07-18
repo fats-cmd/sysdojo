@@ -45,6 +45,22 @@ npm run dev:api
 npm run dev:mobile
 ```
 
+Without further setup the API uses an **in-memory store** (data resets on
+restart) — fine for poking around.
+
+### Persistent storage (Postgres)
+
+```bash
+docker compose up -d db                 # start Postgres 16
+export DATABASE_URL=postgresql://sysdojo:sysdojo@localhost:5432/sysdojo
+npm run db:migrate -w @sysdojo/api      # apply checked-in Prisma migrations
+npm run dev:api                         # now uses the postgres store
+```
+
+The API upserts the YAML content pack into the `Question` table at every
+startup (idempotent — YAML stays the source of truth). Prisma's client is
+generated into `apps/api/src/generated/` on `npm install`.
+
 Open the app in Expo Go / a simulator. It signs in automatically with
 dev-mode auth using your device timezone. On a physical device, set
 `EXPO_PUBLIC_API_URL` to your machine's LAN IP (see `.env.example`).
@@ -58,6 +74,7 @@ dev-mode auth using your device timezone. On a physical device, set
 | `npm test`          | Run all workspace tests (game-logic vitest)   |
 | `npm run typecheck` | Typecheck every workspace                     |
 | `npm run lint`      | Lint every workspace                          |
+| `npm run db:migrate -w @sysdojo/api` | Apply Prisma migrations (needs `DATABASE_URL`) |
 
 ## API surface (v1)
 
@@ -78,9 +95,10 @@ Errors are always `{ "error": { "code", "message" } }`.
 - ✅ Monorepo, shared schemas, YAML content pipeline
 - ✅ API with tested pure game logic (XP, streaks, scheduler, grading)
 - ✅ Mobile app: Today / Review / Profile
-- 🔜 PostgreSQL persistence via Prisma (the API currently uses an in-memory
-  store behind a repository interface; data resets on restart)
-- 🔜 Supabase auth adapter (dev-mode fake adapter today) + docker compose
+- ✅ PostgreSQL persistence via Prisma (`DATABASE_URL` opts in; in-memory
+  dev store remains the default fallback)
+- 🔜 Supabase auth adapter (dev-mode fake adapter today) + full-stack
+  docker compose (compose currently ships the database only)
 
 ## Authoring questions
 

@@ -1,0 +1,75 @@
+// Postgres persistence for sysdojo. Mirrors the Store records in
+// src/store/store.ts — routes never touch Prisma directly.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String  @id @default(uuid())
+  externalId    String  @unique
+  displayName   String
+  timezone      String
+  totalXp       Int     @default(0)
+  combo         Int     @default(0)
+  streakCurrent Int     @default(0)
+  streakBest    Int     @default(0)
+  // Calendar day (YYYY-MM-DD) in the user's IANA timezone, never server time.
+  lastActiveDay String?
+
+  dailyAnswers DailyAnswer[]
+  reviews      Review[]
+}
+
+// Seeded from the YAML content pack at API startup (source of truth stays
+// in content/). Kept in sync so answers and reviews have referential
+// integrity against real questions.
+model Question {
+  id          String @id
+  topic       String
+  difficulty  Int
+  prompt      String
+  choices     Json
+  answerIndex Int
+  explanation String
+
+  dailyAnswers DailyAnswer[]
+  reviews      Review[]
+}
+
+model DailyAnswer {
+  userId      String
+  // YYYY-MM-DD in the user's timezone.
+  day         String
+  questionId  String
+  choiceIndex Int
+  correct     Boolean
+  xpAwarded   Int
+  combo       Int
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@id([userId, day])
+}
+
+model Review {
+  id            String @id @default(uuid())
+  userId        String
+  questionId    String
+  intervalIndex Int
+  lapses        Int
+  // YYYY-MM-DD in the user's timezone.
+  dueDay        String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+  @@index([userId, dueDay])
+}
