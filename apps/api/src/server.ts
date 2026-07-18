@@ -27,7 +27,7 @@ export function createApp(deps: Deps): express.Express {
   app.use("/v1/auth", authRouter(deps));
 
   const authed = requireAuth(deps.store, deps.jwtSecret);
-  app.use("/v1",dailyRouter(deps));
+  app.use("/v1", authed, dailyRouter(deps));
   app.use("/v1", authed, reviewRouter(deps));
   app.use("/v1", authed, meRouter(deps));
 
