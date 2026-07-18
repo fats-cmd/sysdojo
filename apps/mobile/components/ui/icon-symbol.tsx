@@ -1,11 +1,10 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { type SFSymbol, SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -25,7 +24,7 @@ const MAPPING = {
   'globe': 'public',
   'arrow.right': 'arrow-forward',
   'sparkles': 'auto-awesome',
-} as IconMapping;
+} satisfies Partial<Record<SFSymbol, ComponentProps<typeof MaterialIcons>['name']>>;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
