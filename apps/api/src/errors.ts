@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+import { log } from "./log";
 
 export class HttpError extends Error {
   constructor(
@@ -26,7 +27,7 @@ export function asyncHandler<T extends Request>(
 
 export function errorMiddleware(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -41,6 +42,6 @@ export function errorMiddleware(
     res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
     return;
   }
-  console.error(err);
+  log.error(`unhandled error on ${req.method} ${req.originalUrl}:`, err);
   res.status(500).json({ error: { code: "INTERNAL", message: "Internal server error" } });
 }

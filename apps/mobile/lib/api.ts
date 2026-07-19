@@ -31,6 +31,12 @@ const DEFAULT_BASE_URL = Platform.select({
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_BASE_URL;
 
+if (__DEV__) {
+  // Shows up in the Metro/Expo console so "can't reach the API" starts with
+  // knowing exactly which URL the app resolved.
+  console.log(`[sysdojo] API base URL: ${API_BASE_URL} (platform: ${Platform.OS})`);
+}
+
 export class ApiRequestError extends Error {
   constructor(
     public code: string,
