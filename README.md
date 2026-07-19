@@ -33,6 +33,9 @@ content/
 
 ## Getting started
 
+> First time here? **[docs/setup.md](docs/setup.md)** is the full
+> step-by-step guide with expected output and troubleshooting.
+
 Requires Node 20+.
 
 ```bash
