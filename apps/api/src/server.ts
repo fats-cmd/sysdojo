@@ -19,11 +19,29 @@ export interface Deps {
   storeKind?: "postgres" | "memory";
   /** Log every request (method, path, status, duration). Off in tests. */
   logRequests?: boolean;
+  /** Allowed browser origin for CORS (Expo web). Defaults to "*". */
+  corsOrigin?: string;
 }
 
 export function createApp(deps: Deps): express.Express {
   const app = express();
   app.use(express.json());
+
+  // Browsers (Expo web on :8081) enforce CORS; native apps ignore it. The
+  // API is token-authed with no cookies, so a wide-open default is safe;
+  // self-hosters can pin it down with CORS_ORIGIN.
+  const corsOrigin = deps.corsOrigin ?? "*";
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+    if (corsOrigin !== "*") res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
 
   if (deps.logRequests) {
     app.use((req, res, next) => {

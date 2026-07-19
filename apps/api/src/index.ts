@@ -103,6 +103,7 @@ const app = createApp({
   authAdapter: new FakeAuthAdapter(),
   jwtSecret,
   logRequests: true,
+  corsOrigin: process.env.CORS_ORIGIN,
 });
 
 const server = app.listen(port, () => {
