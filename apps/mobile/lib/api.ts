@@ -114,6 +114,15 @@ export class ApiClient {
     return this.request("POST", "/v1/auth/dev", authResponseSchema, { timezone, displayName });
   }
 
+  /** Exchange a provider credential (Supabase access token) for our JWT. */
+  login(credential: string, timezone: string, displayName?: string): Promise<AuthResponse> {
+    return this.request("POST", "/v1/auth/login", authResponseSchema, {
+      credential,
+      timezone,
+      displayName,
+    });
+  }
+
   getDaily(): Promise<DailyResponse> {
     return this.request("GET", "/v1/daily", dailyResponseSchema);
   }
