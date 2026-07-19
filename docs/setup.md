@@ -127,15 +127,15 @@ Then:
 - **iOS simulator**: press `i` in the Expo terminal.
 - **Android emulator**: press `a`. The app reaches your machine via
   `10.0.2.2:3000` automatically.
-- **Physical phone (Expo Go)**: scan the QR code — but first tell the app
-  where the API lives, because `localhost` on the phone is the phone:
+- **Physical phone (Expo Go)**: scan the QR code. The app automatically
+  targets the API on the same machine that serves the JS bundle (it reuses
+  Metro's LAN IP), so this just works when phone and computer are on the
+  same Wi-Fi and the API uses the default port 3000. Override explicitly
+  only if your API runs elsewhere:
 
   ```bash
-  # find your computer's LAN IP (Linux: hostname -I | awk '{print $1}')
   EXPO_PUBLIC_API_URL=http://192.168.1.20:3000 npm run dev:mobile
   ```
-
-  Phone and computer must be on the same Wi-Fi network.
 
 The Metro console prints `[sysdojo] API base URL: ...` on app start —
 that is the URL the app is actually calling.
