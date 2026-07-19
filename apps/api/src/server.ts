@@ -3,6 +3,7 @@ import express from "express";
 import type { AuthAdapter } from "./auth/adapter";
 import { requireAuth } from "./auth/middleware";
 import { errorMiddleware } from "./errors";
+import { log } from "./log";
 import { authRouter } from "./routes/auth";
 import { dailyRouter } from "./routes/daily";
 import { meRouter } from "./routes/me";
@@ -14,14 +15,33 @@ export interface Deps {
   questions: ContentQuestion[];
   authAdapter: AuthAdapter;
   jwtSecret: string;
+  /** Shown on /health so it's obvious which persistence mode is live. */
+  storeKind?: "postgres" | "memory";
+  /** Log every request (method, path, status, duration). Off in tests. */
+  logRequests?: boolean;
 }
 
 export function createApp(deps: Deps): express.Express {
   const app = express();
   app.use(express.json());
 
+  if (deps.logRequests) {
+    app.use((req, res, next) => {
+      const start = Date.now();
+      res.on("finish", () => {
+        log.info(`${req.method} ${req.originalUrl} → ${res.statusCode} (${Date.now() - start}ms)`);
+      });
+      next();
+    });
+  }
+
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, questions: deps.questions.length });
+    res.json({
+      ok: true,
+      questions: deps.questions.length,
+      store: deps.storeKind ?? "unknown",
+      uptimeSeconds: Math.round(process.uptime()),
+    });
   });
 
   app.use("/v1/auth", authRouter(deps));
