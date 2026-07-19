@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type { ContentQuestion } from "@sysdojo/shared";
 import { FakeAuthAdapter } from "./auth/adapter";
+import { SupabaseAuthAdapter } from "./auth/supabase-adapter";
 import { loadQuestions } from "./content/load";
 import { syncQuestions } from "./content/sync";
 import { loadDotEnv } from "./env";
@@ -98,14 +99,28 @@ if (databaseUrl) {
   store = new MemoryStore();
 }
 
+// SUPABASE_JWT_SECRET selects the real auth provider; without it the API
+// runs in dev mode where any device can sign in. Once Supabase is
+// configured, dev login is disabled unless ALLOW_DEV_LOGIN=1.
+const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
+const devLoginEnabled = !supabaseJwtSecret || process.env.ALLOW_DEV_LOGIN === "1";
+if (supabaseJwtSecret) {
+  log.info(`auth: supabase adapter (dev login ${devLoginEnabled ? "ALLOWED" : "disabled"})`);
+} else {
+  log.info("auth: dev mode — any device can sign in (set SUPABASE_JWT_SECRET for real auth)");
+}
+
 const app = createApp({
   store,
   storeKind,
   questions,
-  authAdapter: new FakeAuthAdapter(),
+  authAdapter: supabaseJwtSecret
+    ? new SupabaseAuthAdapter(supabaseJwtSecret)
+    : new FakeAuthAdapter(),
   jwtSecret,
   logRequests: true,
   corsOrigin: process.env.CORS_ORIGIN,
+  devLoginEnabled,
 });
 
 const server = app.listen(port, () => {

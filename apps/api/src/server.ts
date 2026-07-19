@@ -21,6 +21,8 @@ export interface Deps {
   logRequests?: boolean;
   /** Allowed browser origin for CORS (Expo web). Defaults to "*". */
   corsOrigin?: string;
+  /** POST /v1/auth/dev works unless this is explicitly false (production). */
+  devLoginEnabled?: boolean;
 }
 
 export function createApp(deps: Deps): express.Express {

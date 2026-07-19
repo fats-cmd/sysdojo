@@ -85,7 +85,8 @@ dev-mode auth using your device timezone. On a physical device, set
 
 | Method | Path                    | Purpose                                   |
 | ------ | ----------------------- | ----------------------------------------- |
-| POST   | `/v1/auth/dev`          | Dev-mode login → JWT + profile            |
+| POST   | `/v1/auth/login`        | Provider login (Supabase token) → JWT     |
+| POST   | `/v1/auth/dev`          | Dev-mode login → JWT (dev servers only)   |
 | GET    | `/v1/daily`             | Today's question (+ result if answered)   |
 | POST   | `/v1/answers`           | Submit today's answer → graded result     |
 | GET    | `/v1/review`            | Due spaced-repetition items               |
@@ -102,8 +103,10 @@ Errors are always `{ "error": { "code", "message" } }`.
 - ✅ Mobile app: Today / Review / Profile
 - ✅ PostgreSQL persistence via Prisma (`DATABASE_URL` opts in; in-memory
   dev store remains the default fallback)
-- 🔜 Supabase auth adapter (dev-mode fake adapter today) + full-stack
-  docker compose (compose currently ships the database only)
+- ✅ Supabase auth adapter (`SUPABASE_JWT_SECRET` opts in; dev-mode login
+  auto-disables) + full-stack docker compose (`--profile full`)
+- 🔜 Mobile Supabase login UI (the app still uses dev login; the API is
+  ready for real tokens via `POST /v1/auth/login`)
 
 ## Authoring questions
 

@@ -50,6 +50,15 @@ export const devLoginRequestSchema = z.object({
 });
 export type DevLoginRequest = z.infer<typeof devLoginRequestSchema>;
 
+/** Provider login: `credential` is the auth provider's token
+ *  (e.g. a Supabase access token), verified server-side by the adapter. */
+export const loginRequestSchema = z.object({
+  credential: z.string().min(1),
+  displayName: z.string().min(1).max(40).optional(),
+  timezone: z.string().min(1),
+});
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
 export const authResponseSchema = z.object({
   token: z.string(),
   profile: userProfileSchema,
