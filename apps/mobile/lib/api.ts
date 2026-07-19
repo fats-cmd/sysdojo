@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import {
   apiErrorSchema,
@@ -23,13 +24,22 @@ import type { z } from "zod";
  * whatever the server says.
  */
 
-// Android emulators reach the host machine via 10.0.2.2, not localhost.
-const DEFAULT_BASE_URL = Platform.select({
-  android: "http://10.0.2.2:3000",
-  default: "http://localhost:3000",
-});
+function defaultBaseUrl(): string {
+  // On a physical device "localhost" is the phone itself. In development the
+  // API runs on the same machine as Metro, and Metro's host URI (e.g.
+  // "192.168.1.20:8081") carries that machine's LAN IP — reuse it.
+  const metroHost = Constants.expoConfig?.hostUri?.split(":")[0];
+  if (metroHost && metroHost !== "localhost" && metroHost !== "127.0.0.1") {
+    return `http://${metroHost}:3000`;
+  }
+  // Android emulators reach the host machine via 10.0.2.2, not localhost.
+  return Platform.select({
+    android: "http://10.0.2.2:3000",
+    default: "http://localhost:3000",
+  });
+}
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_BASE_URL;
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultBaseUrl();
 
 if (__DEV__) {
   // Shows up in the Metro/Expo console so "can't reach the API" starts with
