@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { FakeAuthAdapter } from "./auth/adapter";
 import { loadQuestions } from "./content/load";
 import { syncQuestions } from "./content/sync";
+import { loadDotEnv } from "./env";
 import { log } from "./log";
 import { createApp } from "./server";
 import { MemoryStore } from "./store/memory-store";
@@ -17,12 +18,15 @@ process.on("unhandledRejection", (reason) => {
   process.exit(1);
 });
 
+const envFile = loadDotEnv();
+
 const port = Number(process.env.PORT ?? 3000);
 const jwtSecret = process.env.JWT_SECRET ?? "dev-secret-change-me";
 const contentDir =
   process.env.CONTENT_DIR ?? fileURLToPath(new URL("../../../content", import.meta.url));
 
 log.info(`starting api (node ${process.version}, pid ${process.pid})`);
+if (envFile) log.info(`loaded environment from ${envFile}`);
 log.info(`loading content from ${contentDir}`);
 
 let questions;
