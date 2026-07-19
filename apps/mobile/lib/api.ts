@@ -30,6 +30,8 @@ function defaultBaseUrl(): string {
   // "192.168.1.20:8081") carries that machine's LAN IP — reuse it.
   const metroHost = Constants.expoConfig?.hostUri?.split(":")[0];
   if (metroHost && metroHost !== "localhost" && metroHost !== "127.0.0.1") {
+    // 3000 is the API's default PORT; a non-default API port needs an
+    // explicit EXPO_PUBLIC_API_URL.
     return `http://${metroHost}:3000`;
   }
   // Android emulators reach the host machine via 10.0.2.2, not localhost.
@@ -39,7 +41,12 @@ function defaultBaseUrl(): string {
   });
 }
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? defaultBaseUrl();
+// Trailing slashes would produce double-slash paths ("//v1/...") that miss
+// the Express routers, so strip them from user-provided URLs.
+export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? defaultBaseUrl()).replace(
+  /\/+$/,
+  "",
+);
 
 if (__DEV__) {
   // Shows up in the Metro/Expo console so "can't reach the API" starts with

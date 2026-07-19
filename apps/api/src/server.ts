@@ -33,10 +33,12 @@ export function createApp(deps: Deps): express.Express {
   const corsOrigin = deps.corsOrigin ?? "*";
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", corsOrigin);
-    if (corsOrigin !== "*") res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") {
+      // Let browsers cache the preflight so mutating calls don't pay a
+      // second round-trip every time.
+      res.setHeader("Access-Control-Max-Age", "600");
       res.sendStatus(204);
       return;
     }

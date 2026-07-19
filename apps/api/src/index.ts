@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import type { ContentQuestion } from "@sysdojo/shared";
 import { FakeAuthAdapter } from "./auth/adapter";
 import { loadQuestions } from "./content/load";
 import { syncQuestions } from "./content/sync";
@@ -29,7 +30,7 @@ log.info(`starting api (node ${process.version}, pid ${process.pid})`);
 if (envFile) log.info(`loaded environment from ${envFile}`);
 log.info(`loading content from ${contentDir}`);
 
-let questions;
+let questions: ContentQuestion[];
 try {
   questions = loadQuestions(contentDir);
   log.info(`loaded ${questions.length} questions`);
@@ -57,8 +58,8 @@ function prismaErrorCode(err: unknown): string | null {
 // DATABASE_URL selects Postgres persistence; without it the API falls back
 // to the in-memory dev store (data resets on restart).
 const databaseUrl = process.env.DATABASE_URL;
+const storeKind = databaseUrl ? "postgres" : "memory";
 let store: Store;
-let storeKind: "postgres" | "memory";
 
 if (databaseUrl) {
   const target = redactDatabaseUrl(databaseUrl);
@@ -80,6 +81,9 @@ if (databaseUrl) {
     } else if (code === "P1000") {
       log.error(`postgres rejected the credentials in DATABASE_URL (${target})`);
       log.error("→ check user/password against docker-compose.yml / your database");
+    } else if (code === "P1003") {
+      log.error(`the database named in DATABASE_URL does not exist (${target})`);
+      log.error("→ check the name against POSTGRES_DB in docker-compose.yml");
     } else {
       log.error("unexpected database error during startup:", err);
     }
@@ -89,11 +93,9 @@ if (databaseUrl) {
   await syncQuestions(db, questions);
   log.info(`synced ${questions.length} content questions into postgres`);
   store = new PrismaStore(db);
-  storeKind = "postgres";
 } else {
   log.info("DATABASE_URL not set — using in-memory store (data resets on restart)");
   store = new MemoryStore();
-  storeKind = "memory";
 }
 
 const app = createApp({
