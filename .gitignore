@@ -34,6 +34,9 @@ yarn-error.*
 .env
 .env*.local
 
+# personal local-only docs (kept off the remote by request)
+*.local.md
+
 # typescript
 *.tsbuildinfo
 
