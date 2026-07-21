@@ -1,7 +1,7 @@
+import { contentFileSchema, type ContentQuestion } from "@sysdojo/shared";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
-import { contentFileSchema, type ContentQuestion } from "@sysdojo/shared";
 
 /**
  * Load and validate every YAML question file under `${contentDir}/questions`.
@@ -16,12 +16,12 @@ export function loadQuestions(contentDir: string): ContentQuestion[] {
 
   const questions: ContentQuestion[] = [];
   for (const file of files) {
-    const raw = parse(readFileSync(join(dir, file), "utf8"));
-    const parsed = contentFileSchema.safeParse(raw);
-    if (!parsed.success) {
-      throw new Error(`invalid content in ${file}: ${parsed.error.message}`);
+    const rawFile = parse(readFileSync(join(dir, file), "utf8"));
+    const parsedRawFile = contentFileSchema.safeParse(rawFile);
+    if (!parsedRawFile.success) {
+      throw new Error(`invalid content in ${file}: ${parsedRawFile.error.message}`);
     }
-    const fromFile = "questions" in parsed.data ? parsed.data.questions : [parsed.data];
+    const fromFile = "questions" in parsedRawFile.data ? parsedRawFile.data.questions : [parsedRawFile.data];
     questions.push(...fromFile);
   }
 

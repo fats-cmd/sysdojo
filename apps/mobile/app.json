@@ -1,5 +1,6 @@
 {
   "expo": {
+    "jsEngine": "hermes",
     "name": "sysdojo",
     "slug": "sysdojo",
     "version": "1.0.0",
@@ -9,6 +10,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      //  "jsEngine": "jsc",
       "supportsTablet": true
     },
     "android": {
