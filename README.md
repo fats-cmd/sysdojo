@@ -36,7 +36,7 @@ content/
 > First time here? **[docs/setup.md](docs/setup.md)** is the full
 > step-by-step guide with expected output and troubleshooting.
 
-Requires Node 20+.
+Requires Node 20.12+.
 
 ```bash
 npm install
@@ -55,14 +55,16 @@ restart) — fine for poking around.
 
 ```bash
 docker compose up -d db                 # start Postgres 16
-export DATABASE_URL=postgresql://sysdojo:sysdojo@localhost:5432/sysdojo
+cp .env.example .env                    # then uncomment DATABASE_URL in .env
 npm run db:migrate -w @sysdojo/api      # apply checked-in Prisma migrations
 npm run dev:api                         # now uses the postgres store
 ```
 
-The API upserts the YAML content pack into the `Question` table at every
-startup (idempotent — YAML stays the source of truth). Prisma's client is
-generated into `apps/api/src/generated/` on `npm install`.
+The API and Prisma commands read the repo-root `.env` automatically. The
+YAML content pack is upserted into the `Question` table at every startup
+(idempotent — YAML stays the source of truth). Prisma's client is
+generated into `apps/api/src/generated/` on `npm install`. Full details
+and troubleshooting: [docs/setup.md](docs/setup.md).
 
 Open the app in Expo Go / a simulator. It signs in automatically with
 dev-mode auth using your device timezone. On a physical device, set
@@ -83,7 +85,8 @@ dev-mode auth using your device timezone. On a physical device, set
 
 | Method | Path                    | Purpose                                   |
 | ------ | ----------------------- | ----------------------------------------- |
-| POST   | `/v1/auth/dev`          | Dev-mode login → JWT + profile            |
+| POST   | `/v1/auth/login`        | Provider login (Supabase token) → JWT     |
+| POST   | `/v1/auth/dev`          | Dev-mode login → JWT (dev servers only)   |
 | GET    | `/v1/daily`             | Today's question (+ result if answered)   |
 | POST   | `/v1/answers`           | Submit today's answer → graded result     |
 | GET    | `/v1/review`            | Due spaced-repetition items               |
@@ -100,8 +103,10 @@ Errors are always `{ "error": { "code", "message" } }`.
 - ✅ Mobile app: Today / Review / Profile
 - ✅ PostgreSQL persistence via Prisma (`DATABASE_URL` opts in; in-memory
   dev store remains the default fallback)
-- 🔜 Supabase auth adapter (dev-mode fake adapter today) + full-stack
-  docker compose (compose currently ships the database only)
+- ✅ Supabase auth adapter (`SUPABASE_JWT_SECRET` opts in; dev-mode login
+  auto-disables) + full-stack docker compose (`--profile full`)
+- 🔜 Mobile Supabase login UI (the app still uses dev login; the API is
+  ready for real tokens via `POST /v1/auth/login`)
 
 ## Authoring questions
 

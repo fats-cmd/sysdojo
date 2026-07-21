@@ -1,5 +1,7 @@
-# Self-host infrastructure. Currently just Postgres; run the API and app
-# on the host (see README). Matches the DATABASE_URL in .env.example.
+# Self-host infrastructure.
+#   docker compose up -d db              → just Postgres (run the API on the host)
+#   docker compose --profile full up -d  → Postgres + API containers
+# Matches the DATABASE_URL in .env.example.
 services:
   db:
     image: postgres:16-alpine
@@ -16,6 +18,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://sysdojo:sysdojo@db:5432/sysdojo
+      # Change this in production; see .env.example for all variables.
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db-data:

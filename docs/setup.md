@@ -153,6 +153,18 @@ that is the URL the app is actually calling.
 | `Cannot find module ... generated/prisma` | `npm install` at the repo root (regenerates the Prisma client). |
 | Phone connects but times out | Firewall blocking port 3000, or phone on different network/VPN. |
 
+## Full self-host (API + database in containers)
+
+```bash
+docker compose --profile full up -d
+```
+
+Builds the API image (migrations run automatically on start) and serves it
+on port 3000 against the composed database. Configure real secrets via the
+environment: `JWT_SECRET`, and `SUPABASE_JWT_SECRET` to switch from
+dev-mode login to verifying real Supabase access tokens (which also
+disables `POST /v1/auth/dev`).
+
 ## Native Postgres (no Docker)
 
 ```bash

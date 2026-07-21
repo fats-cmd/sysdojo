@@ -15,6 +15,9 @@ export function loadDotEnv(): string | null {
       process.loadEnvFile(candidate);
       return candidate;
     }
+    // Never walk past the repo root — a stray .env in a parent folder must
+    // not leak configuration into the API.
+    if (existsSync(path.join(dir, ".git"))) break;
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
