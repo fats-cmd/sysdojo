@@ -26,6 +26,25 @@ export interface DailyAnswerRecord {
   combo: number;
 }
 
+/**
+ * A rotating refresh token. `tokenHash` is the SHA-256 of the opaque token
+ * handed to the client — the plaintext is never stored. `familyId` groups
+ * every token descended from one sign-in, so detecting reuse can revoke the
+ * whole chain at once.
+ */
+export interface RefreshTokenRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  familyId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  /** Set when the token was revoked (sign-out, or a compromised family). */
+  revokedAt: Date | null;
+  /** Id of the token that superseded this one. Non-null ⇒ already rotated. */
+  replacedBy: string | null;
+}
+
 export interface ReviewRecord {
   id: string;
   userId: string;
@@ -40,6 +59,20 @@ export interface Store {
   getUserByExternalId(externalId: string): Promise<UserRecord | null>;
   createUser(user: Omit<UserRecord, "id">): Promise<UserRecord>;
   updateUser(user: UserRecord): Promise<UserRecord>;
+  /** Erase the account and everything hanging off it (answers, reviews,
+   *  refresh tokens). Required for in-app account deletion. */
+  deleteUser(id: string): Promise<void>;
+
+  createRefreshToken(token: Omit<RefreshTokenRecord, "id"> & { id?: string }): Promise<RefreshTokenRecord>;
+  getRefreshTokenByHash(tokenHash: string): Promise<RefreshTokenRecord | null>;
+  /** Mark `id` as rotated into `replacedBy`. */
+  replaceRefreshToken(id: string, replacedBy: string): Promise<void>;
+  /** Revoke every live token in a rotation family (reuse detected, sign-out). */
+  revokeRefreshTokenFamily(familyId: string, revokedAt: Date): Promise<void>;
+  /** Revoke every live token for a user (sign out of all devices). */
+  revokeUserRefreshTokens(userId: string, revokedAt: Date): Promise<void>;
+  /** Housekeeping: drop rows that can no longer authenticate anyone. */
+  deleteExpiredRefreshTokens(now: Date): Promise<number>;
 
   getDailyAnswer(userId: string, day: string): Promise<DailyAnswerRecord | null>;
   saveDailyAnswer(answer: DailyAnswerRecord): Promise<void>;

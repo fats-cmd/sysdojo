@@ -59,11 +59,33 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+/**
+ * Sessions are a short-lived access token plus a long-lived, single-use
+ * refresh token. The client stores both in secure storage, sends the access
+ * token on every request, and swaps the refresh token for a new pair when
+ * the access token expires. Refresh tokens rotate on every use.
+ */
 export const authResponseSchema = z.object({
-  token: z.string(),
+  /** Signed JWT for the Authorization header. Short-lived. */
+  accessToken: z.string(),
+  /** Opaque, single-use token that mints the next pair. */
+  refreshToken: z.string(),
+  /** Access-token lifetime in seconds, so clients can refresh proactively. */
+  expiresIn: z.number().int().positive(),
   profile: userProfileSchema,
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+export const refreshRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
+
+/** Sign-out revokes the whole rotation family the token belongs to. */
+export const logoutRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type LogoutRequest = z.infer<typeof logoutRequestSchema>;
 
 // ---- daily question ----
 

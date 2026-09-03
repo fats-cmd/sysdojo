@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { MemoryStore } from "../src/store/memory-store";
 import { createPrismaClient, PrismaStore } from "../src/store/prisma-store";
-import type { Store } from "../src/store/store";
+import type { RefreshTokenRecord, Store } from "../src/store/store";
 
 /**
  * Contract tests: every Store implementation must behave identically.
@@ -139,6 +139,125 @@ function storeContract(makeHarness: () => Promise<Harness>) {
     expect(await h.store.getReview(review.id)).toBeNull();
     await expect(h.store.deleteReview(review.id)).resolves.toBeUndefined();
   });
+
+  // ---- refresh tokens ----
+
+  /** A token record for `userId`, live unless overridden. */
+  function tokenFor(userId: string, overrides: Partial<RefreshTokenRecord> = {}) {
+    return {
+      userId,
+      tokenHash: `hash-${Math.random().toString(36).slice(2)}`,
+      familyId: "family-1",
+      createdAt: new Date("2026-09-01T00:00:00Z"),
+      expiresAt: new Date("2026-11-01T00:00:00Z"),
+      revokedAt: null,
+      replacedBy: null,
+      ...overrides,
+    };
+  }
+
+  it("stores and looks up refresh tokens by hash", async () => {
+    const user = await h.store.createUser(baseUser);
+    const created = await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-a" }));
+
+    expect(created.id).toBeTruthy();
+    expect(await h.store.getRefreshTokenByHash("hash-a")).toEqual(created);
+    expect(await h.store.getRefreshTokenByHash("nope")).toBeNull();
+  });
+
+  it("records the successor when a token rotates", async () => {
+    const user = await h.store.createUser(baseUser);
+    const first = await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-a" }));
+    const second = await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-b" }));
+
+    await h.store.replaceRefreshToken(first.id, second.id);
+    expect((await h.store.getRefreshTokenByHash("hash-a"))?.replacedBy).toBe(second.id);
+    expect((await h.store.getRefreshTokenByHash("hash-b"))?.replacedBy).toBeNull();
+  });
+
+  it("revokes a whole family without touching other families", async () => {
+    const user = await h.store.createUser(baseUser);
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-a", familyId: "fam-1" }));
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-b", familyId: "fam-1" }));
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-c", familyId: "fam-2" }));
+
+    const at = new Date("2026-09-03T12:00:00Z");
+    await h.store.revokeRefreshTokenFamily("fam-1", at);
+
+    expect((await h.store.getRefreshTokenByHash("hash-a"))?.revokedAt).toEqual(at);
+    expect((await h.store.getRefreshTokenByHash("hash-b"))?.revokedAt).toEqual(at);
+    expect((await h.store.getRefreshTokenByHash("hash-c"))?.revokedAt).toBeNull();
+  });
+
+  it("revokes every family for one user", async () => {
+    const user = await h.store.createUser(baseUser);
+    const other = await h.store.createUser({ ...baseUser, externalId: "ext-2" });
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-a", familyId: "fam-1" }));
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-b", familyId: "fam-2" }));
+    await h.store.createRefreshToken(tokenFor(other.id, { tokenHash: "hash-c" }));
+
+    const at = new Date("2026-09-03T12:00:00Z");
+    await h.store.revokeUserRefreshTokens(user.id, at);
+
+    expect((await h.store.getRefreshTokenByHash("hash-a"))?.revokedAt).toEqual(at);
+    expect((await h.store.getRefreshTokenByHash("hash-b"))?.revokedAt).toEqual(at);
+    expect((await h.store.getRefreshTokenByHash("hash-c"))?.revokedAt).toBeNull();
+  });
+
+  it("prunes only tokens that are already past expiry", async () => {
+    const user = await h.store.createUser(baseUser);
+    await h.store.createRefreshToken(
+      tokenFor(user.id, { tokenHash: "hash-old", expiresAt: new Date("2026-08-01T00:00:00Z") }),
+    );
+    await h.store.createRefreshToken(
+      tokenFor(user.id, { tokenHash: "hash-live", expiresAt: new Date("2026-12-01T00:00:00Z") }),
+    );
+
+    const removed = await h.store.deleteExpiredRefreshTokens(new Date("2026-09-03T00:00:00Z"));
+    expect(removed).toBe(1);
+    expect(await h.store.getRefreshTokenByHash("hash-old")).toBeNull();
+    expect(await h.store.getRefreshTokenByHash("hash-live")).not.toBeNull();
+  });
+
+  // ---- account deletion ----
+
+  it("deletes a user and everything hanging off them", async () => {
+    const user = await h.store.createUser(baseUser);
+    const survivor = await h.store.createUser({ ...baseUser, externalId: "ext-2" });
+
+    await h.store.saveDailyAnswer({
+      userId: user.id,
+      day: "2026-07-18",
+      questionId: "q-a",
+      choiceIndex: 0,
+      correct: true,
+      xpAwarded: 10,
+      combo: 1,
+    });
+    const review = await h.store.upsertReview({
+      userId: user.id,
+      questionId: "q-b",
+      intervalIndex: 0,
+      lapses: 1,
+      dueDay: "2026-07-19",
+    });
+    await h.store.createRefreshToken(tokenFor(user.id, { tokenHash: "hash-a" }));
+    await h.store.createRefreshToken(tokenFor(survivor.id, { tokenHash: "hash-keep" }));
+
+    await h.store.deleteUser(user.id);
+
+    expect(await h.store.getUser(user.id)).toBeNull();
+    expect(await h.store.getDailyAnswer(user.id, "2026-07-18")).toBeNull();
+    expect(await h.store.getReview(review.id)).toBeNull();
+    expect(await h.store.getRefreshTokenByHash("hash-a")).toBeNull();
+    // The other account is untouched.
+    expect(await h.store.getUser(survivor.id)).not.toBeNull();
+    expect(await h.store.getRefreshTokenByHash("hash-keep")).not.toBeNull();
+  });
+
+  it("deletes a missing user without complaining", async () => {
+    await expect(h.store.deleteUser("never-existed")).resolves.toBeUndefined();
+  });
 }
 
 describe("MemoryStore", () => {
@@ -178,6 +297,7 @@ describe.skipIf(!testDatabaseUrl)("PrismaStore (TEST_DATABASE_URL)", () => {
       }
     },
     reset: async () => {
+      await db.refreshToken.deleteMany();
       await db.review.deleteMany();
       await db.dailyAnswer.deleteMany();
       await db.user.deleteMany();

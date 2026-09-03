@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AccountActions } from '@/components/account-actions';
 import { ProgressBar } from '@/components/progress-bar';
 import { ErrorState, LoadingState } from '@/components/screen-state';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -109,8 +110,10 @@ export default function ProfileScreen() {
           <StatCard icon="globe" color="#22c55e" label="Timezone" value={profile.timezone} />
         </View>
 
-        <Text className="mt-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
-          Signed in with dev-mode auth · streaks follow your device timezone
+        <AccountActions />
+
+        <Text className="mt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+          Streaks follow your device timezone
         </Text>
       </ScrollView>
     </SafeAreaView>
