@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import type {
   DailyAnswerRecord,
+  RefreshTokenRecord,
   ReviewRecord,
   Store,
   UserRecord,
@@ -32,6 +33,48 @@ export class PrismaStore implements Store {
   async updateUser(user: UserRecord): Promise<UserRecord> {
     const { id, ...data } = user;
     return this.db.user.update({ where: { id }, data });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    // Answers, reviews and refresh tokens are ON DELETE CASCADE, so one
+    // delete erases the whole account.
+    await this.db.user.deleteMany({ where: { id } });
+  }
+
+  async createRefreshToken(
+    token: Omit<RefreshTokenRecord, "id"> & { id?: string },
+  ): Promise<RefreshTokenRecord> {
+    const { id, ...rest } = token;
+    return this.db.refreshToken.create({ data: { ...(id ? { id } : {}), ...rest } });
+  }
+
+  async getRefreshTokenByHash(tokenHash: string): Promise<RefreshTokenRecord | null> {
+    return this.db.refreshToken.findUnique({ where: { tokenHash } });
+  }
+
+  async replaceRefreshToken(id: string, replacedBy: string): Promise<void> {
+    await this.db.refreshToken.updateMany({ where: { id }, data: { replacedBy } });
+  }
+
+  async revokeRefreshTokenFamily(familyId: string, revokedAt: Date): Promise<void> {
+    await this.db.refreshToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt },
+    });
+  }
+
+  async revokeUserRefreshTokens(userId: string, revokedAt: Date): Promise<void> {
+    await this.db.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt },
+    });
+  }
+
+  async deleteExpiredRefreshTokens(now: Date): Promise<number> {
+    const { count } = await this.db.refreshToken.deleteMany({
+      where: { expiresAt: { lte: now } },
+    });
+    return count;
   }
 
   async getDailyAnswer(userId: string, day: string): Promise<DailyAnswerRecord | null> {

@@ -90,19 +90,61 @@ of truth, and answers/reviews get real foreign keys.
 
 ### Auth (`src/auth/`)
 
-`AuthAdapter` is the seam: `authenticate(credentials) → external identity`.
-Today there is one implementation, `FakeAuthAdapter` (dev mode: any device
-gets an identity, no password). The planned Supabase adapter implements the
-same interface, which is why routes and JWT handling won't change: the API
-always issues **its own** short-lived JWT after the adapter vouches for an
-identity, and `requireAuth` resolves it to a `UserRecord` on every request.
+`AuthAdapter` is the seam: `authenticate(credential) → external identity`.
+Two implementations: `FakeAuthAdapter` (dev mode: any device gets an
+identity, no password) and `SupabaseAuthAdapter`. The adapter only ever
+vouches for an identity — the API then issues **its own** session, so no
+business logic is coupled to Supabase.
+
+**Verifying the provider's token.** Supabase signs session JWTs with an
+asymmetric key whose public half it publishes at
+`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. `jwks.ts` fetches and
+caches those keys (Node imports a JWK natively, so no JWKS library), and
+rotation is handled by refetching on an unknown `kid` — rate-limited so
+junk key ids can not amplify into outbound requests. The legacy shared
+HS256 secret is still accepted for unmigrated projects. The algorithm in
+the token header picks the path, and each path is restricted to its own
+key material, so `alg: HS256` can never be verified against a public key.
+`iss` and `aud` are both checked. A JWKS outage returns **503**, not 401 —
+a provider being down must not look like a bad credential and sign
+everyone out.
+
+**Our own session** is a pair (`auth/jwt.ts`, `auth/refresh.ts`):
+
+| | Access token | Refresh token |
+| --- | --- | --- |
+| form | signed JWT (`iss`/`aud` pinned) | 32 random bytes, opaque |
+| life | 15 minutes | 60 days, rotating |
+| storage | not stored | SHA-256 hash only |
+| revocable | no (expires fast) | yes, immediately |
+
+Every refresh rotates: the presented token is marked replaced and a new one
+issued in the same **family**. Presenting an already-rotated token means two
+parties hold the same secret, so the whole family is revoked and the real
+user is signed out rather than silently sharing their account. `deleteUser`
+cascades to answers, reviews and tokens.
+
+`evaluateRefreshToken` is a pure function, so all four outcomes (valid,
+expired, revoked, reused) are unit-tested without a database.
+
+### Configuration (`src/config.ts`)
+
+One pure function turns the environment into a validated `AppConfig`, and
+**production is fail-fast**: a missing or placeholder `JWT_SECRET`, no
+auth provider, no `DATABASE_URL`, or `ALLOW_DEV_LOGIN=1` each refuse the
+boot, and every problem is reported at once. The credential-free
+`/v1/auth/dev` endpoint is impossible to enable under `NODE_ENV=production`
+— not merely off by default. Every development convenience in this project
+is a full authentication bypass in production, so none of them may be
+reachable by forgetting a variable.
 
 ### Startup (`src/index.ts`)
 
 Boot order matters and is fail-fast with actionable log lines: load `.env`
-(Node's built-in loader, shell wins) → validate content → probe the
-database if configured (unreachable/unmigrated → one-line fix suggestion,
-exit 1) → sync questions → listen. `/health` reports which store is live.
+(Node's built-in loader, shell wins) → **validate configuration** → validate
+content → probe the database if configured (unreachable/unmigrated →
+one-line fix suggestion, exit 1) → sync questions → listen. `/health`
+reports which store is live. An hourly sweep prunes expired refresh tokens.
 
 ## The mobile app (apps/mobile)
 
@@ -111,9 +153,18 @@ Expo Router screens under `app/`: `(tabs)/index` (Today), `review`,
 
 - `lib/api.ts` — the only network code. Resolves the API base URL
   (explicit `EXPO_PUBLIC_API_URL` → Metro host's LAN IP on devices →
-  localhost/10.0.2.2), attaches the JWT, zod-parses every response.
-- `lib/session.tsx` — dev-mode auto-login with the device timezone; holds
-  token + profile in context.
+  localhost/10.0.2.2), attaches the access token, zod-parses every
+  response. Owns the session: on a 401 it refreshes once and retries, with
+  the refresh **single-flighted** so a burst of 401s cannot rotate the same
+  token twice and trip the server's reuse detection.
+- `lib/token-store.ts` — tokens in the iOS Keychain / Android
+  EncryptedSharedPreferences via expo-secure-store, so the refresh token is
+  not readable on a rooted device or in an unencrypted backup. Expo web
+  falls back to localStorage (development convenience, not equivalent
+  security).
+- `lib/session.tsx` — restores the saved session on launch, so a returning
+  user skips sign-in entirely; dev-mode auto-login otherwise. Exposes
+  sign-out, sign-out-everywhere, and account deletion.
 - `components/question-card.tsx` — renders a question, posts the chosen
   index, renders the server's verdict. It never grades locally.
 
@@ -127,7 +178,10 @@ server, the server is right.
 - Content pack: schema-validated in `test/content.test.ts` (CI fails on
   bad YAML).
 - Store implementations: shared contract suite (`test/store.test.ts`).
-- HTTP layer: `test/cors.test.ts` boots the real app on an ephemeral port.
+- HTTP layer: `test/cors.test.ts` and `test/auth-routes.test.ts` boot the
+  real app on an ephemeral port. The latter walks the whole session
+  lifecycle: sign in, rotate, replay a stolen token, sign out, delete.
+- Configuration: `test/config.test.ts` pins every production refusal.
 
 ## Extension points
 
@@ -135,6 +189,7 @@ server, the server is right.
 | ------- | ----- |
 | new questions | `content/questions/*.yaml` only |
 | a real auth provider | implement `AuthAdapter`, wire in `index.ts` |
+| a production auth rule | `src/config.ts` + `test/config.test.ts` |
 | another database | implement `Store`, pass it to `createApp` |
 | new game rules | pure function in `src/game/` + tests + route wiring |
 | new API endpoints | schema in `packages/shared`, router in `src/routes/` |

@@ -160,10 +160,13 @@ docker compose --profile full up -d
 ```
 
 Builds the API image (migrations run automatically on start) and serves it
-on port 3000 against the composed database. Configure real secrets via the
-environment: `JWT_SECRET`, and `SUPABASE_JWT_SECRET` to switch from
-dev-mode login to verifying real Supabase access tokens (which also
-disables `POST /v1/auth/dev`).
+on port 3000 against the composed database.
+
+For anything reachable from the internet, set `NODE_ENV=production` and read
+**[docs/auth.md](./auth.md)** first — production requires a real
+`JWT_SECRET`, `DATABASE_URL` and `SUPABASE_URL`, and the API will refuse to
+start (listing every problem) rather than fall back to a development default
+that would let anyone sign in as anyone.
 
 ## Native Postgres (no Docker)
 
