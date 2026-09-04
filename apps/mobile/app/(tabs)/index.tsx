@@ -35,23 +35,45 @@ export default function TodayScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuestionCardResult | null>(null);
 
-  const loadDaily = useCallback(async () => {
+  const applyDaily = useCallback((d: DailyResponse) => {
+    setDaily(d);
+    setResult(d.result);
+    setSelected(null);
     setLoadError(null);
-    try {
-      const d = await api.getDaily();
-      setDaily(d);
-      setResult(d.result);
-      setSelected(null);
-    } catch (err) {
-      setLoadError(
-        err instanceof ApiRequestError ? err.message : 'Could not load today’s question.',
-      );
-    }
   }, []);
 
+  const failDaily = useCallback((err: unknown) => {
+    setLoadError(
+      err instanceof ApiRequestError ? err.message : 'Could not load today’s question.',
+    );
+  }, []);
+
+  // Load today's question once the session is ready. The state updates live
+  // in the promise callbacks rather than the effect body, and `cancelled`
+  // drops a response that lands after we've navigated away or the session
+  // changed underneath it.
   useEffect(() => {
-    if (status === 'ready') void loadDaily();
-  }, [status, loadDaily]);
+    if (status !== 'ready') return;
+    let cancelled = false;
+    api.getDaily().then(
+      (d) => {
+        if (!cancelled) applyDaily(d);
+      },
+      (err: unknown) => {
+        if (!cancelled) failDaily(err);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [status, applyDaily, failDaily]);
+
+  /** Retry from the error screen. Clearing the error in the handler keeps the
+   *  tap responsive — the screen switches to loading straight away. */
+  const retryLoadDaily = useCallback(() => {
+    setLoadError(null);
+    api.getDaily().then(applyDaily, failDaily);
+  }, [applyDaily, failDaily]);
 
   const submit = useCallback(async () => {
     if (!daily || selected === null) return;
@@ -76,7 +98,7 @@ export default function TodayScreen() {
   if (status === 'error' || !profile) {
     return <ErrorState message={errorMessage ?? 'Could not sign in.'} onRetry={retry} />;
   }
-  if (loadError) return <ErrorState message={loadError} onRetry={loadDaily} />;
+  if (loadError) return <ErrorState message={loadError} onRetry={retryLoadDaily} />;
   if (!daily) return <LoadingState />;
 
   return (
