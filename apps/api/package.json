@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "prisma generate",
     "dev": "tsx watch src/index.ts",
+    "prestart": "prisma generate",
     "start": "tsx src/index.ts",
+    "pretest": "prisma generate",
     "test": "vitest run",
+    "pretypecheck": "prisma generate",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

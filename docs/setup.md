@@ -150,7 +150,7 @@ that is the URL the app is actually calling.
 | API: `schema is missing or out of date` | Run `npm run db:migrate -w @sysdojo/api`. |
 | `DATABASE_URL is not set` from db:migrate | Create `.env` (step 2b-3) or `export DATABASE_URL=...` in the same terminal. |
 | API: `port 3000 is already in use` | Another `dev:api` is running — stop it, or `PORT=3001 npm run dev:api` (then point `EXPO_PUBLIC_API_URL` at 3001). |
-| `Cannot find module ... generated/prisma` | `npm install` at the repo root (regenerates the Prisma client). |
+| `Cannot find module ... generated/prisma`, or `Property '...' does not exist on type 'PrismaClient'` | The generated Prisma client is stale or missing — it is a build artifact, not checked in. `npm run db:generate -w @sysdojo/api` rebuilds it. `dev`, `start`, `test` and `typecheck` now do this automatically, so you should only see this on an older checkout. |
 | Phone connects but times out | Firewall blocking port 3000, or phone on different network/VPN. |
 
 ## Full self-host (API + database in containers)
