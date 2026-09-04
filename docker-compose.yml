@@ -28,10 +28,20 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://sysdojo:sysdojo@db:5432/sysdojo
-      # Change this in production; see .env.example for all variables.
+      # Set NODE_ENV=production and the API refuses to start on any
+      # development default — see .env.example.
+      NODE_ENV: ${NODE_ENV:-development}
+      # Generate with: openssl rand -base64 48
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      # Your Supabase project URL. Required once NODE_ENV=production; enables
+      # verification against the project's published signing keys.
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      # Only for projects still on the legacy shared HS256 secret.
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
       ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      # Number of proxies in front of the API, so rate limiting sees real IPs.
+      TRUST_PROXY: ${TRUST_PROXY:-}
     depends_on:
       db:
         condition: service_healthy

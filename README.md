@@ -85,14 +85,22 @@ dev-mode auth using your device timezone. On a physical device, set
 
 | Method | Path                    | Purpose                                   |
 | ------ | ----------------------- | ----------------------------------------- |
-| POST   | `/v1/auth/login`        | Provider login (Supabase token) → JWT     |
-| POST   | `/v1/auth/dev`          | Dev-mode login → JWT (dev servers only)   |
+| POST   | `/v1/auth/login`        | Provider login (Supabase token) → session |
+| POST   | `/v1/auth/refresh`      | Rotate: new access + refresh pair         |
+| POST   | `/v1/auth/logout`       | Revoke this device's session              |
+| POST   | `/v1/auth/dev`          | Dev-mode login (dev servers only)         |
 | GET    | `/v1/daily`             | Today's question (+ result if answered)   |
 | POST   | `/v1/answers`           | Submit today's answer → graded result     |
 | GET    | `/v1/review`            | Due spaced-repetition items               |
 | POST   | `/v1/review/:id/answer` | Answer a review item → reschedule/graduate|
 | GET    | `/v1/me`                | Profile + stats                           |
 | PATCH  | `/v1/me`                | Update display name / timezone            |
+| POST   | `/v1/me/logout-all`     | Revoke every session for the account      |
+| DELETE | `/v1/me`                | Delete the account and all its data       |
+
+A session is a 15-minute access token plus a rotating 60-day refresh token.
+See **[docs/auth.md](docs/auth.md)** for the model and what production
+requires.
 
 Errors are always `{ "error": { "code", "message" } }`.
 
@@ -103,10 +111,15 @@ Errors are always `{ "error": { "code", "message" } }`.
 - ✅ Mobile app: Today / Review / Profile
 - ✅ PostgreSQL persistence via Prisma (`DATABASE_URL` opts in; in-memory
   dev store remains the default fallback)
-- ✅ Supabase auth adapter (`SUPABASE_JWT_SECRET` opts in; dev-mode login
-  auto-disables) + full-stack docker compose (`--profile full`)
-- 🔜 Mobile Supabase login UI (the app still uses dev login; the API is
-  ready for real tokens via `POST /v1/auth/login`)
+- ✅ Supabase auth (`SUPABASE_URL` opts in) verified against the project's
+  published signing keys, with issuer pinning and legacy-secret fallback
+- ✅ Production auth: rotating refresh tokens with reuse detection, sign-out
+  and sign-out-everywhere, account deletion, auth rate limiting, and a
+  fail-fast config that refuses to boot on any development default
+  ([docs/auth.md](docs/auth.md))
+- ✅ Mobile Supabase login UI, with the session persisted in the device
+  keychain and refreshed transparently
+- ✅ Full-stack docker compose (`--profile full`)
 
 ## Authoring questions
 

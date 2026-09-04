@@ -22,8 +22,31 @@ model User {
   // Calendar day (YYYY-MM-DD) in the user's IANA timezone, never server time.
   lastActiveDay String?
 
-  dailyAnswers DailyAnswer[]
-  reviews      Review[]
+  dailyAnswers  DailyAnswer[]
+  reviews       Review[]
+  refreshTokens RefreshToken[]
+}
+
+// Rotating refresh tokens. Only the SHA-256 hash of each token is stored, so
+// a database dump cannot be replayed as a session. `familyId` chains every
+// token descended from one sign-in: presenting an already-rotated token means
+// it was stolen, and the whole family is revoked.
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  familyId   String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  // Id of the token that superseded this one. Non-null means already rotated.
+  replacedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
 }
 
 // Seeded from the YAML content pack at API startup (source of truth stays
